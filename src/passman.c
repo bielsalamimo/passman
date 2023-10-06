@@ -137,7 +137,7 @@ void list_passwords(void)
 	free(s);
 }
 
-void new_password(char *name)
+void new_password(char *name, char *password)
 {
 	unsigned char key[KEY_LEN];
 	if (sodium_init() != 0) {
@@ -158,7 +158,7 @@ void new_password(char *name)
 	}
 
 	FILE *file_text = fopen(filename, "w");
-	char *data = getpass("Password to store: ");
+	char *data = password;
 	fprintf(file_text, "%s", data);
 	fclose(file_text);
 
@@ -303,14 +303,19 @@ int main(int argc, char **argv)
 	} else if (option_is(option_list, option_list_long, argv)) {
 		list_passwords();
 	} else if (option_is(option_new, option_new_long, argv)) {
-		if (argc > 3) {
+		if (argc > 4) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "too many arguments\n");
 		} else if (argc < 3) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "not enough arguments\n");
+		} else if (argc == 4) {
+
+			new_password(argv[2], argv[3]);
 		} else {
-			new_password(argv[2]);
+			char *pwd;
+			scanf("%s", &pwd);
+			new_password(argv[2], pwd);
 		}
 	} else if (option_is(option_delete, option_delete_long, argv)) {
 		if (argc > 3) {
