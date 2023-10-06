@@ -3,7 +3,7 @@ The man that manages your passwords.
 
 # Dependencies
 ```
-sudo pacman -S libsodium gcc clang
+sudo pacman -S libsodium gcc clang libtar
 ```
 If you want the copy command `-c` to work, install `xclip` too
 
