@@ -27,7 +27,7 @@
 
 void print_help(void);
 void list_passwords(void);
-void new_password(char *name);
+void new_password(char *name, char *password);
 void print_password(char *name);
 void delete_password(char *name);
 void rename_password(char *from, char *to);
