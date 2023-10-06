@@ -9,7 +9,7 @@ If you want the copy command `-c` to work, install `xclip` too
 
 # Install
 ```
-git clone https://codeberg.org/billy02357/passman
+git clone https://github.org/bielsalamimo/passman
 cd passman
 sudo make install
 ```
