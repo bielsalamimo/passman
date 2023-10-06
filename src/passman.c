@@ -1,6 +1,6 @@
 /*
  * Passman, the man that manages your passwords.
- * Version:  0.3.6
+ * Version:  0.3.7
  * Author(s):  Biel Sala , bielsalamimo@gmail.com
  *
  */
@@ -20,7 +20,7 @@
 #define PATH_LIMIT 200
 
 #define PROGRAM_NAME "passman"
-#define VERSION "0.3.6"
+#define VERSION "0.3.7"
 
 #define COLOR_RED "\x1b[1;31m" // Bold (for errors)
 #define COLOR_RESET "\x1b[0m"
