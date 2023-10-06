@@ -23,7 +23,7 @@ sudo make install
 * [x] Rename a password
 * [x] Print error on wrong master password
 * [x] Backup all passwords
-* [ ] --new option takes optional argument with the new password
+* [x] --new option takes optional argument with the new password
 * [ ] Restore from .tar backup
 
 # Contributing
