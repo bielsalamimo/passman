@@ -159,7 +159,7 @@ void new_password(char *name, char *password)
 
 	FILE *file_text = fopen(filename, "w");
 	if (strcmp(password, " ") == 0) {
-		scanf("%s", &password);
+		password = getpass("Password: ");
 	}
 	char *data = password;
 	fprintf(file_text, "%s", data);
