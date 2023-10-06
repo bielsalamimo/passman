@@ -11,7 +11,7 @@ If you want the copy command `-c` to work, install `xclip` too
 ```
 git clone https://github.org/bielsalamimo/passman
 cd passman
-sudo make install
+sudo make clean install
 ```
 
 # TODO
