@@ -158,6 +158,9 @@ void new_password(char *name, char *password)
 	}
 
 	FILE *file_text = fopen(filename, "w");
+	if (strcmp(password, " ") == 0) {
+		scanf("%s", &password);
+	}
 	char *data = password;
 	fprintf(file_text, "%s", data);
 	fclose(file_text);
@@ -313,9 +316,7 @@ int main(int argc, char **argv)
 
 			new_password(argv[2], argv[3]);
 		} else {
-			char *pwd;
-			scanf("%s", &pwd);
-			new_password(argv[2], pwd);
+			new_password(argv[2], " ");
 		}
 	} else if (option_is(option_delete, option_delete_long, argv)) {
 		if (argc > 3) {
