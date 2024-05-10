@@ -1,5 +1,5 @@
 # passman
-The man that manages your passwords.
+Simple password manager in C.
 
 # Dependencies
 ```
@@ -8,26 +8,14 @@ sudo pacman -S libsodium gcc clang libtar xclip
 
 # Install
 ```
-git clone https://github.org/bielsalamimo/passman
+git clone https://github.org/bielxvf/passman
 cd passman
 sudo make clean install
 ```
 
 # TODO
-* [x] List passwords
-* [x] Create password
-* [x] Print password
-* [x] Remove password
-* [x] Copy password (xclip)
-* [x] Rename a password
-* [x] Print error on wrong master password
-* [x] Backup all passwords
-* [x] --new option takes optional argument with the new password
 * [ ] Restore from .tar backup
+* [ ] Fix functions to take variables as const when necessary
 
 # Contributing
-- Use `clang-format` on all files (`make` runs it)
-- Use large and descripting variable names
-- Better to write nice and easy to read code than comment too much
-- Add your name to modified files (if you care)
-- Have fun
+- Use `clang-format` on all files (`make format` runs it)
