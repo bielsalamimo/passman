@@ -1,10 +1,3 @@
-/*
- * Passman, the man that manages your passwords.
- * Version:  0.3.7
- * Author(s):  Biel Sala , bielsalamimo@gmail.com
- *
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,16 +8,14 @@
 #include <libtar.h>
 #include <fcntl.h>
 
-#include "passman.h" // functions that help main functions like list_passwords()
+#include "passman.h"
 
 #define PATH_LIMIT 200
 
-#define PROGRAM_NAME "passman"
-#define VERSION "0.3.7"
-
-#define COLOR_RED "\x1b[1;31m" // Bold (for errors)
+#define COLOR_RED "\x1b[1;31m" // Bold
 #define COLOR_RESET "\x1b[0m"
 
+void Option_print(const Option *opt);
 void print_help(void);
 void list_passwords(void);
 void new_password(char *name, char *password);
@@ -33,64 +24,114 @@ void delete_password(char *name);
 void rename_password(char *from, char *to);
 void backup_passwords(char *path);
 
-// Commandline options
-const char option_help[] = "-h";
-const char option_help_long[] = "--help";
+typedef struct {
+    char *short;
+    char *long;
+    char *usage;
+    char *params;
+} Option;
 
-const char option_version[] = "-v";
-const char option_version_long[] = "--version";
+const Option optHelp = { .short = "-h",
+                         .long = "--help",
+                         .usage = "Print this help message",
+                         .params = ""
+};
 
-const char option_list[] = "-l";
-const char option_list_long[] = "--list";
+const Option optVersion = { .short = "-v" ,
+                            .long = "--version",
+                            .usage = "Print version",
+                            .params = ""
+};
 
-const char option_new[] = "-n";
-const char option_new_long[] = "--new";
+const Option optList = { .short = "-l",
+                         .long = "--list",
+                         .usage = "List passwords",
+                         .params = ""
+};
 
-const char option_delete[] = "-d";
-const char option_delete_long[] = "--delete";
+const Option optNew = { .short = "-n",
+                        .long = "--new",
+                        .usage = "Create a new password",
+                        .params = "[NAME]"
+};
 
-const char option_print[] = "-p";
-const char option_print_long[] = "--print";
+const Option optDelete = { .short = "-d",
+                           .long = "--delete",
+                           .usage = "Delete a password",
+                           .params = "[NAME]"
+};
 
-const char option_copy[] = "-c";
-const char option_copy_long[] = "--copy";
+const Option optPrint = { .short = "-p",
+                          .long = "--print",
+                          .usage = "Print a password",
+                          .params = "[NAME]"
+};
 
-const char option_rename[] = "-r";
-const char option_rename_long[] = "--rename";
+const Option optCopy = { .short = "-c",
+                         .long = "--copy",
+                         .usage = "Copy a password to clipboard",
+                         .params = "[NAME]"
+};
 
-const char option_backup[] = "-b";
-const char option_backup_long[] = "--backup";
+const Option optRename = { .short = "-r",
+                           .long = "--rename",
+                           .usage = "Rename a password",
+                           .params = "[NAME] [NEW NAME]"
+};
 
-void print_help(void)
+const Option optBackup = {
+    .short = "-b",
+    .long = "--backup",
+    .usage = "Backup passwords",
+    .params = "[PATH/TO/BACKUP.tar]"
+};
+
+typedef struct {
+    char *name;
+    char *version;
+    char *usage;
+    Option *options;
+    size_t options_size;
+} Program;
+
+const Program passman = {
+    .name = "passman",
+    .version = "0.4.0",
+    .usage = "[option] [arguments...]"
+    .options = { optHelp,
+                 optVersion,
+                 optList,
+                 optNew,
+                 optDelete,
+                 optPrint,
+                 optCopy,
+                 optRename,
+                 optBackup
+    },
+    .options_size = 9
+};
+
+void Option_print(const Option *opt)
 {
-	fprintf(stderr, "usage: %s [-h|l|n|d|c|r|b] [arg]\n", PROGRAM_NAME);
-	fprintf(stderr, "Options:\n");
-	fprintf(stderr, "\t%s,%s\t\t\t\tPrint this help message\n", option_help,
-		option_help_long);
-	fprintf(stderr, "\t%s,%s\t\t\t\tPrint version\n", option_version,
-		option_version_long);
-	fprintf(stderr, "\t%s,%s\t\t\t\tList passwords\n", option_list,
-		option_list_long);
-	fprintf(stderr, "\t%s,%s [NAME]\t\t\t\tCreate a new password\n",
-		option_new, option_new_long);
-	fprintf(stderr, "\t%s,%s [NAME]\t\t\tDelete a password\n",
-		option_delete, option_delete_long);
-	fprintf(stderr, "\t%s,%s [NAME]\t\t\tPrint a password\n", option_print,
-		option_print_long);
-	fprintf(stderr, "\t%s,%s [NAME]\t\t\tCopy password\n", option_copy,
-		option_copy_long);
-	fprintf(stderr, "\t%s,%s [NAME] [NEW NAME]\t\tRename a password\n",
-		option_rename, option_rename_long);
-	fprintf(stderr, "\t%s,%s [path/to/file.tar]\t\tBackup passwords\n",
-		option_backup, option_backup_long);
-	fprintf(stderr,
-		"Advice: Use the same master password for every password\n");
+    fprintf(stderr, "\t%s,%s", opt->short, opt->long);
+    if (strlen(opt->params) > 0) {
+        fprintf(stderr, " %s", opt->params);
+    }
+    fprintf(stderr, "\t\t\t%s\n", opt->usage);
+}
+
+void print_help()
+{
+    fprintf(stderr, "usage: %s %s\n", passman.name, passman.usage);
+    for (int i = 0; i < passman.options_size; i++) {
+        OptionPrint(&program.options[i]);
+    }
 	exit(1);
 }
 
 void version(void)
 {
-	printf("version: %s\n", VERSION);
+	printf("version: %s\n", passman.version);
 	exit(0);
 }
 
