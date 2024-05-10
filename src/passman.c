@@ -3,8 +3,6 @@
 #include <string.h>
 #include <dirent.h>
 #include <unistd.h>
-
-#include <sodium.h>
 #include <libtar.h>
 #include <fcntl.h>
 
@@ -12,131 +10,185 @@
 
 #define PATH_LIMIT 200
 
-#define COLOR_RED "\x1b[1;31m" // Bold
-#define COLOR_RESET "\x1b[0m"
-
-void Option_print(const Option *opt);
-void print_help(void);
-void list_passwords(void);
-void new_password(char *name, char *password);
-void print_password(char *name);
-void delete_password(char *name);
-void rename_password(char *from, char *to);
-void backup_passwords(char *path);
-
-typedef struct {
-    char *short;
-    char *long;
-    char *usage;
-    char *params;
-} Option;
-
-const Option optHelp = { .short = "-h",
-                         .long = "--help",
-                         .usage = "Print this help message",
-                         .params = ""
-};
-
-const Option optVersion = { .short = "-v" ,
-                            .long = "--version",
-                            .usage = "Print version",
-                            .params = ""
-};
-
-const Option optList = { .short = "-l",
-                         .long = "--list",
-                         .usage = "List passwords",
-                         .params = ""
-};
-
-const Option optNew = { .short = "-n",
-                        .long = "--new",
-                        .usage = "Create a new password",
-                        .params = "[NAME]"
-};
-
-const Option optDelete = { .short = "-d",
-                           .long = "--delete",
-                           .usage = "Delete a password",
-                           .params = "[NAME]"
-};
-
-const Option optPrint = { .short = "-p",
-                          .long = "--print",
-                          .usage = "Print a password",
-                          .params = "[NAME]"
-};
-
-const Option optCopy = { .short = "-c",
-                         .long = "--copy",
-                         .usage = "Copy a password to clipboard",
-                         .params = "[NAME]"
-};
-
-const Option optRename = { .short = "-r",
-                           .long = "--rename",
-                           .usage = "Rename a password",
-                           .params = "[NAME] [NEW NAME]"
-};
-
-const Option optBackup = {
-    .short = "-b",
-    .long = "--backup",
-    .usage = "Backup passwords",
-    .params = "[PATH/TO/BACKUP.tar]"
-};
-
-typedef struct {
-    char *name;
-    char *version;
-    char *usage;
-    Option *options;
-    size_t options_size;
-} Program;
-
-const Program passman = {
-    .name = "passman",
-    .version = "0.4.0",
-    .usage = "[option] [arguments...]"
-    .options = { optHelp,
-                 optVersion,
-                 optList,
-                 optNew,
-                 optDelete,
-                 optPrint,
-                 optCopy,
-                 optRename,
-                 optBackup
-    },
-    .options_size = 9
-};
+#include <sodium.h>
+#define CHUNK_SIZE 4096
+#define KEY_LEN crypto_box_SEEDBYTES
 
 void Option_print(const Option *opt)
 {
-    fprintf(stderr, "\t%s,%s", opt->short, opt->long);
+    fprintf(stderr, "\t%s,%s", opt->s, opt->l);
     if (strlen(opt->params) > 0) {
         fprintf(stderr, " %s", opt->params);
     }
-    fprintf(stderr, "\t\t\t%s\n", opt->usage);
+    fprintf(stderr, "\t%s\n", opt->usage);
 }
 
-void print_help()
+int Option_is(const Option *opt, char **argv)
 {
-    fprintf(stderr, "usage: %s %s\n", passman.name, passman.usage);
-    for (int i = 0; i < passman.options_size; i++) {
-        OptionPrint(&program.options[i]);
+	if (!strcmp(argv[1], opt->s) || !strcmp(argv[1], opt->l)) {
+		return 1;
+	}
+	return 0;
+}
+
+char *get_path_to_passwords(void)
+{
+	char *home = getenv("HOME");
+	if (home == NULL)
+		exit(1);
+	char buff[100];
+	sprintf(buff, "%s/.config/passman/", home);
+	char *path = buff;
+
+	return path;
+}
+
+int encrypt(const char *target_file, const char *source_file,
+            char *master_password)
+{
+	unsigned char salt[crypto_pwhash_SALTBYTES];
+	unsigned char key[KEY_LEN];
+
+	randombytes_buf(salt, sizeof salt);
+
+	if (crypto_pwhash(key, sizeof key, master_password,
+			  strlen(master_password), salt,
+			  crypto_pwhash_OPSLIMIT_INTERACTIVE,
+			  crypto_pwhash_MEMLIMIT_INTERACTIVE,
+			  crypto_pwhash_ALG_DEFAULT)
+	    != 0) {
+		fprintf(stderr, "Error: Out of memory\n");
+		exit(1);
+	}
+
+	unsigned char buf_in[CHUNK_SIZE];
+	unsigned char buf_out[CHUNK_SIZE
+			      + crypto_secretstream_xchacha20poly1305_ABYTES];
+	unsigned char header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
+	crypto_secretstream_xchacha20poly1305_state st;
+
+	FILE *fp_t, *fp_s;
+	unsigned long long out_len;
+	size_t rlen;
+	int eof;
+	unsigned char tag;
+
+	fp_s = fopen(source_file, "rb");
+	fp_t = fopen(target_file, "wb");
+
+	crypto_secretstream_xchacha20poly1305_init_push(&st, header, key);
+	fwrite(header, 1, sizeof header, fp_t);
+	fwrite(salt, 1, crypto_pwhash_SALTBYTES, fp_t);
+
+	do {
+		rlen = fread(buf_in, 1, sizeof buf_in, fp_s);
+		eof = feof(fp_s);
+		tag = eof ? crypto_secretstream_xchacha20poly1305_TAG_FINAL : 0;
+		crypto_secretstream_xchacha20poly1305_push(
+			&st, buf_out, &out_len, buf_in, rlen, NULL, 0, tag);
+		fwrite(buf_out, 1, (size_t)out_len, fp_t);
+	} while (!eof);
+	fclose(fp_t);
+	fclose(fp_s);
+
+	return 0;
+}
+
+int decrypt(const char *target_file, const char *source_file,
+	    char *master_password)
+{
+	unsigned char buf_in[CHUNK_SIZE
+			     + crypto_secretstream_xchacha20poly1305_ABYTES];
+	unsigned char buf_out[CHUNK_SIZE];
+	unsigned char header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
+
+	crypto_secretstream_xchacha20poly1305_state st;
+	FILE *fp_t, *fp_s;
+	unsigned long long out_len;
+	size_t rlen;
+	int eof;
+	int ret = -1;
+	unsigned char tag;
+
+	fp_s = fopen(source_file, "rb");
+	fp_t = fopen(target_file, "wb");
+
+	unsigned char salt[crypto_pwhash_SALTBYTES];
+	fread(header, 1, sizeof header, fp_s);
+	fread(salt, 1, crypto_pwhash_SALTBYTES, fp_s);
+
+	unsigned char key[crypto_secretstream_xchacha20poly1305_KEYBYTES];
+	if (crypto_pwhash(key, sizeof key, master_password,
+			  strlen(master_password), salt,
+			  crypto_pwhash_OPSLIMIT_INTERACTIVE,
+			  crypto_pwhash_MEMLIMIT_INTERACTIVE,
+			  crypto_pwhash_ALG_DEFAULT)
+	    != 0) {
+		fprintf(stderr, "Error: out of memory\n");
+		exit(1);
+	}
+
+	if (crypto_secretstream_xchacha20poly1305_init_pull(&st, header, key)
+	    != 0) {
+		goto ret;
+	}
+
+	do {
+		rlen = fread(buf_in, 1, sizeof buf_in, fp_s);
+		eof = feof(fp_s);
+		if (crypto_secretstream_xchacha20poly1305_pull(
+			    &st, buf_out, &out_len, &tag, buf_in, rlen, NULL, 0)
+		    != 0) {
+			goto ret;
+		}
+		if (tag == crypto_secretstream_xchacha20poly1305_TAG_FINAL
+		    && !eof) {
+			goto ret;
+		}
+		fwrite(buf_out, 1, (size_t)out_len, fp_t);
+	} while (!eof);
+
+	ret = 0;
+ret:
+	fclose(fp_t);
+	fclose(fp_s);
+
+	return ret;
+}
+
+void no_extension(const char *s)
+{
+	char *r = calloc(strlen(s), sizeof(char));
+
+	int l;
+	for (l = strlen(s); 0 < l; l--) {
+		if (s[l] == '.') {
+			break;
+		}
+	}
+
+	for (int i = 0; i < l; i++) {
+		r[i] = s[i];
+	}
+	printf("%s\n", r);
+}
+
+void print_help(const Program *program)
+{
+    fprintf(stderr, "usage: %s %s\n", program->name, program->usage);
+    for (int i = 0; i < program->options_size; i++) {
+        Option_print(&program->options[i]);
     }
 	exit(1);
 }
 
-void version(void)
+void print_version(const Program *program)
 {
-	printf("version: %s\n", passman.version);
+	printf("version: %s\n", program->version);
 	exit(0);
 }
 
-// list contents of $HOME/.config/passman
-void list_passwords(void)
+void list_passwords()
 {
 	DIR *d;
 	struct dirent *dir;
@@ -333,87 +385,4 @@ void backup_passwords(char *path)
 	tar_close(ptar);
 
 	rename("passman_backup.tar", path);
-}
-
-int main(int argc, char **argv)
-{
-	char *path_to_passwords = get_path_to_passwords();
-	mkdir(path_to_passwords, 0777); // Should fail if it exists
-
-	if (argc == 1 || option_is(option_help, option_help_long, argv)) {
-		print_help();
-	} else if (option_is(option_version, option_version_long, argv)) {
-		version();
-	} else if (option_is(option_list, option_list_long, argv)) {
-		list_passwords();
-	} else if (option_is(option_new, option_new_long, argv)) {
-		if (argc > 4) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "too many arguments\n");
-		} else if (argc < 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "not enough arguments\n");
-		} else if (argc == 4) {
-
-			new_password(argv[2], argv[3]);
-		} else {
-			new_password(argv[2], " ");
-		}
-	} else if (option_is(option_delete, option_delete_long, argv)) {
-		if (argc > 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "too many arguments\n");
-		} else if (argc < 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "not enough arguments\n");
-		} else {
-			delete_password(argv[2]);
-		}
-	} else if (option_is(option_print, option_print_long, argv)) {
-		if (argc > 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "too many arguments\n");
-		} else if (argc < 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "not enough arguments\n");
-		} else {
-			print_password(argv[2]);
-		}
-	} else if (option_is(option_rename, option_rename_long, argv)) {
-		if (argc > 4) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "too many arguments\n");
-		} else if (argc < 4) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "not enough arguments\n");
-		} else {
-			rename_password(argv[2], argv[3]);
-		}
-	} else if (option_is(option_backup, option_backup_long, argv)) {
-		if (argc > 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "too many arguments\n");
-		} else if (argc < 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "not enough arguments\n");
-		} else {
-			backup_passwords(argv[2]);
-		}
-	} else if (option_is(option_copy, option_copy_long, argv)) {
-		if (argc > 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "too many arguments\n");
-		} else if (argc < 3) {
-			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-						  "not enough arguments\n");
-		} else {
-			copy_password(argv[2], argv[0]);
-		}
-	} else {
-		fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
-					  "unrecognised option\n");
-		print_help();
-	}
-
-	return 0;
 }
