@@ -10,14 +10,14 @@
 #include <fcntl.h>
 #include <limits.h>
 
-#define COLOR_RED "\x1b[1;31m" // Bold
-#define COLOR_RESET "\x1b[0m"
-
+#include "color.h"
 #include "Program.h"
 
 char *get_path_to_passwords();
-int encrypt(const char *target_file, const char *source_file, char *master_password);
-int decrypt(const char *target_file, const char *source_file, char *master_password);
+int encrypt(const char *target_file, const char *source_file,
+	    char *master_password);
+int decrypt(const char *target_file, const char *source_file,
+	    char *master_password);
 void no_extension(const char *s);
 void print_help(const Program *program);
 void print_version(const Program *program);
@@ -46,7 +46,7 @@ char *get_path_to_passwords()
 }
 
 int encrypt(const char *target_file, const char *source_file,
-            char *master_password)
+	    char *master_password)
 {
 	unsigned char salt[crypto_pwhash_SALTBYTES];
 	unsigned char key[KEY_LEN];
@@ -59,7 +59,8 @@ int encrypt(const char *target_file, const char *source_file,
 			  crypto_pwhash_MEMLIMIT_INTERACTIVE,
 			  crypto_pwhash_ALG_DEFAULT)
 	    != 0) {
-		fprintf(stderr, "Error: Out of memory\n");
+		fprintf(stderr,
+			COLOR_RED "Error: " COLOR_RESET "Out of memory\n");
 		exit(1);
 	}
 
@@ -126,7 +127,8 @@ int decrypt(const char *target_file, const char *source_file,
 			  crypto_pwhash_MEMLIMIT_INTERACTIVE,
 			  crypto_pwhash_ALG_DEFAULT)
 	    != 0) {
-		fprintf(stderr, "Error: out of memory\n");
+		fprintf(stderr,
+			COLOR_RED "Error: " COLOR_RESET "Out of memory\n");
 		exit(1);
 	}
 
@@ -177,10 +179,10 @@ void no_extension(const char *s)
 
 void print_help(const Program *program)
 {
-    fprintf(stderr, "usage: %s %s\n", program->name, program->usage);
-    for (int i = 0; i < program->options_size; i++) {
-        Option_print(&program->options[i]);
-    }
+	fprintf(stderr, "usage: %s %s\n", program->name, program->usage);
+	for (int i = 0; i < program->options_size; i++) {
+		Option_print(&program->options[i]);
+	}
 	exit(1);
 }
 
@@ -239,8 +241,7 @@ void new_password(char *name, char *password)
 		exit(1);
 	}
 
-
-	char filename[PATH_MAX];
+	char filename[PATH_MAX - 4];
 	sprintf(filename, "%s/%s", get_path_to_passwords(), name);
 
 	char filename_enc[PATH_MAX];
@@ -277,7 +278,7 @@ void print_password(char *name)
 					  "Could not initialize sodium\n");
 		exit(1);
 	}
-	char filename[PATH_MAX];
+	char filename[PATH_MAX - 4];
 	sprintf(filename, "%s/%s", get_path_to_passwords(), name);
 
 	char filename_enc[PATH_MAX];
@@ -322,7 +323,7 @@ void delete_password(char *name)
 
 	char filename[PATH_MAX];
 	sprintf(filename, "%s/%s.enc", get_path_to_passwords(), name);
-	printf("\033[1mDelete '%s'? [y/N]\033[0m ", name);
+	printf(COLOR_BOLD "Delete '%s'? [y/N] " COLOR_RESET, name);
 
 	char yes_or_no[100];
 	fgets(yes_or_no, 100, stdin);
@@ -379,9 +380,8 @@ void rename_password(char *from, char *to)
 void backup_passwords(char *path, const Program *program)
 {
 	TAR *ptar;
-    
-	tar_open(&ptar, path, NULL, O_WRONLY | O_CREAT, 0644,
-		 TAR_GNU);
+
+	tar_open(&ptar, path, NULL, O_WRONLY | O_CREAT, 0644, TAR_GNU);
 	tar_append_tree(ptar, get_path_to_passwords(), program->name);
 	tar_append_eof(ptar);
 	tar_close(ptar);
