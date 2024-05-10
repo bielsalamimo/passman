@@ -2,7 +2,7 @@ MANPREFIX = /usr/share/man
 
 passman:
 	@mkdir -p ./build/
-	$(CC) -o ./build/passman ./src/main.c ./src/passman.c -ltar -lsodium
+	$(CC) -o ./build/passman ./src/main.c -ltar -lsodium
 
 format:
 	clang-format -i ./src/*
