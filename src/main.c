@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "not enough arguments\n");
 		} else {
-			copy_password(argv[2], argv[0]);
+			copy_password(argv[2], &passman);
 		}
 	} else {
 		fprintf(stderr, COLOR_RED "Error: " COLOR_RESET

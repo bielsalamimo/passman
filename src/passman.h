@@ -22,12 +22,12 @@ void no_extension(const char *s);
 void print_help(const Program *program);
 void print_version(const Program *program);
 void list_passwords();
-void new_password(char *name, char *password);
-void print_password(char *name);
-void delete_password(char *name);
-void rename_password(char *from, char *to);
-void backup_passwords(char *path, const Program *program);
-void copy_password(char *name, char *progname);
+void new_password(const char *name, const char *password);
+void print_password(const char *name);
+void delete_password(const char *name);
+void rename_password(const char *from, const char *to);
+void backup_passwords(const char *path, const Program *program);
+void copy_password(const char *name, const Program *program);
 
 #include <sodium.h>
 #define CHUNK_SIZE 4096
@@ -234,7 +234,7 @@ void list_passwords()
 	free(s);
 }
 
-void new_password(char *name, char *password)
+void new_password(const char *name, const char *password)
 {
 	unsigned char key[KEY_LEN];
 	if (sodium_init() != 0) {
@@ -257,8 +257,7 @@ void new_password(char *name, char *password)
 	if (strcmp(password, " ") == 0) {
 		password = getpass("Password: ");
 	}
-	char *data = password;
-	fprintf(file_text, "%s", data);
+	fprintf(file_text, "%s", password);
 	fclose(file_text);
 
 
@@ -270,7 +269,7 @@ void new_password(char *name, char *password)
 	exit(0);
 }
 
-void print_password(char *name)
+void print_password(const char *name)
 {
 	unsigned char key[KEY_LEN];
 	if (sodium_init() != 0) {
@@ -309,16 +308,16 @@ void print_password(char *name)
 	exit(0);
 }
 
-void copy_password(char *name, char *progname)
+void copy_password(const char *name, const Program *program)
 {
 	char cmd[PATH_MAX];
-	sprintf(cmd, "%s -p %s | xclip -r -i -selection clipboard", progname,
-		name);
+	sprintf(cmd, "%s -p %s | xclip -r -i -selection clipboard",
+		program->name, name);
 	system(cmd);
 	exit(0);
 }
 
-void delete_password(char *name)
+void delete_password(const char *name)
 {
 
 	char filename[PATH_MAX];
@@ -345,7 +344,7 @@ void delete_password(char *name)
 	}
 }
 
-void rename_password(char *from, char *to)
+void rename_password(const char *from, const char *to)
 {
 	char filename[PATH_MAX];
 	sprintf(filename, "%s/%s.enc", get_path_to_passwords(), from);
@@ -377,7 +376,7 @@ void rename_password(char *from, char *to)
 	printf("'%s' -> '%s'\n", from, to);
 }
 
-void backup_passwords(char *path, const Program *program)
+void backup_passwords(const char *path, const Program *program)
 {
 	TAR *ptar;
 
