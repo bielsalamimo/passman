@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "not enough arguments\n");
 		} else {
-			backup_passwords(argv[2]);
+			backup_passwords(argv[2], &passman);
 		}
 	} else if (Option_is(&optCopy, argv)) {
 		if (argc > 3) {
