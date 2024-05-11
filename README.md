@@ -15,6 +15,7 @@ sudo make clean install
 
 # TODO
 * [ ] Restore from .tar backup
+* [ ] Ask for master password before deleting a password
 
 # Contributing
 - Use `clang-format` on all files (`make format` runs it)
