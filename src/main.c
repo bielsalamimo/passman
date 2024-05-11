@@ -4,80 +4,36 @@
 
 #include "passman.h"
 
-static const Option optHelp = {.s = "-h",
-			       .l = "--help",
-			       .usage = "Print this help message",
-			       .params = ""};
-
-static const Option optVersion = {.s = "-v",
-				  .l = "--version",
-				  .usage = "Print version",
-				  .params = ""};
-
-static const Option optList = {.s = "-l",
-			       .l = "--list",
-			       .usage = "List passwords",
-			       .params = ""};
-
-static const Option optNew = {.s = "-n",
-			      .l = "--new",
-			      .usage = "Create a new password",
-			      .params = "[NAME]"};
-
-static const Option optDelete = {.s = "-d",
-				 .l = "--delete",
-				 .usage = "Delete a password",
-				 .params = "[NAME]"};
-
-static const Option optPrint = {.s = "-p",
-				.l = "--print",
-				.usage = "Print a password",
-				.params = "[NAME]"};
-
-static const Option optCopy = {.s = "-c",
-			       .l = "--copy",
-			       .usage = "Copy a password to clipboard",
-			       .params = "[NAME]"};
-
-static const Option optRename = {.s = "-r",
-				 .l = "--rename",
-				 .usage = "Rename a password",
-				 .params = "[NAME] [NEW NAME]"};
-
-static const Option optBackup = {.s = "-b",
-				 .l = "--backup",
-				 .usage = "Backup passwords",
-				 .params = "[OUTPUT]"};
 
 int main(int argc, char **argv)
 {
-	Program passman = {.name = "passman",
-			   .version = "0.4.0",
-			   .usage = "[option] [arguments...]",
-			   .options_size = 9};
+	copt_program_init("passman", "0.5.0", "[OPTION] [ARGS...]");
 
-	passman.options = malloc(sizeof(Option) * passman.options_size);
-
-	passman.options[0] = optHelp;
-	passman.options[1] = optVersion;
-	passman.options[2] = optList;
-	passman.options[3] = optNew;
-	passman.options[4] = optDelete;
-	passman.options[5] = optPrint;
-	passman.options[6] = optRename;
-	passman.options[7] = optBackup;
-	passman.options[8] = optCopy;
+	copt_add_option("help", "-h", "--help", "Print help message", "");
+	copt_add_option("version", "-v", "--version", "Print version", "");
+	copt_add_option("list", "-l", "--list", "List passwords", "");
+	copt_add_option("new", "-n", "--new", "Create a new password",
+			"[NAME]");
+	copt_add_option("delete", "-d", "--delete", "Delete a password",
+			"[NAME]");
+	copt_add_option("print", "-p", "--print", "Print a password", "[NAME]");
+	copt_add_option("copy", "-c", "--copy", "Copy a password to clipboard",
+			"[NAME]");
+	copt_add_option("rename", "-r", "--rename", "Rename a password",
+			"[NAME] [NEW NAME]");
+	copt_add_option("backup", "-b", "--backup",
+			"Backup password directory into a .tar", "[OUTPUT]");
 
 	char *path_to_passwords = get_path_to_passwords();
 	mkdir(path_to_passwords, 0777);
 
-	if (argc == 1 || Option_is(&optHelp, argv)) {
-		print_help(&passman);
-	} else if (Option_is(&optVersion, argv)) {
-		print_version(&passman);
-	} else if (Option_is(&optList, argv)) {
+	if (argc == 1 || copt_option_is("help", argv)) {
+		copt_print_help();
+	} else if (copt_option_is("version", argv)) {
+		print_version();
+	} else if (copt_option_is("list", argv)) {
 		list_passwords();
-	} else if (Option_is(&optNew, argv)) {
+	} else if (copt_option_is("new", argv)) {
 		if (argc > 4) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "too many arguments\n");
@@ -90,7 +46,7 @@ int main(int argc, char **argv)
 		} else {
 			new_password(argv[2], " ");
 		}
-	} else if (Option_is(&optDelete, argv)) {
+	} else if (copt_option_is("delete", argv)) {
 		if (argc > 3) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "too many arguments\n");
@@ -100,7 +56,7 @@ int main(int argc, char **argv)
 		} else {
 			delete_password(argv[2]);
 		}
-	} else if (Option_is(&optPrint, argv)) {
+	} else if (copt_option_is("print", argv)) {
 		if (argc > 3) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "too many arguments\n");
@@ -110,7 +66,7 @@ int main(int argc, char **argv)
 		} else {
 			print_password(argv[2]);
 		}
-	} else if (Option_is(&optRename, argv)) {
+	} else if (copt_option_is("rename", argv)) {
 		if (argc > 4) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "too many arguments\n");
@@ -120,7 +76,7 @@ int main(int argc, char **argv)
 		} else {
 			rename_password(argv[2], argv[3]);
 		}
-	} else if (Option_is(&optBackup, argv)) {
+	} else if (copt_option_is("backup", argv)) {
 		if (argc > 3) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "too many arguments\n");
@@ -128,9 +84,9 @@ int main(int argc, char **argv)
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "not enough arguments\n");
 		} else {
-			backup_passwords(argv[2], &passman);
+			backup_passwords(argv[2]);
 		}
-	} else if (Option_is(&optCopy, argv)) {
+	} else if (copt_option_is("copy", argv)) {
 		if (argc > 3) {
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "too many arguments\n");
@@ -138,12 +94,12 @@ int main(int argc, char **argv)
 			fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 						  "not enough arguments\n");
 		} else {
-			copy_password(argv[2], &passman);
+			copy_password(argv[2]);
 		}
 	} else {
 		fprintf(stderr, COLOR_RED "Error: " COLOR_RESET
 					  "unrecognised option\n");
-		print_help(&passman);
+		copt_print_help();
 	}
 
 	return 0;

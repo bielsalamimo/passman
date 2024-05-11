@@ -11,7 +11,7 @@
 #include <limits.h>
 
 #include "color.h"
-#include "Program.h"
+#include "copt.h"
 
 char *get_path_to_passwords();
 int encrypt(const char *target_file, const char *source_file,
@@ -19,15 +19,14 @@ int encrypt(const char *target_file, const char *source_file,
 int decrypt(const char *target_file, const char *source_file,
 	    char *master_password);
 void no_extension(const char *s);
-void print_help(const Program *program);
-void print_version(const Program *program);
+void print_version();
 void list_passwords();
 void new_password(const char *name, const char *password);
 void print_password(const char *name);
 void delete_password(const char *name);
 void rename_password(const char *from, const char *to);
-void backup_passwords(const char *path, const Program *program);
-void copy_password(const char *name, const Program *program);
+void backup_passwords(const char *path);
+void copy_password(const char *name);
 
 #include <sodium.h>
 #define CHUNK_SIZE 4096
@@ -177,21 +176,6 @@ void no_extension(const char *s)
 	printf("%s\n", r);
 }
 
-void print_help(const Program *program)
-{
-	fprintf(stderr, "usage: %s %s\n", program->name, program->usage);
-	for (int i = 0; i < program->options_size; i++) {
-		Option_print(&program->options[i]);
-	}
-	exit(1);
-}
-
-void print_version(const Program *program)
-{
-	printf("version: %s\n", program->version);
-	exit(0);
-}
-
 void list_passwords()
 {
 	DIR *d;
@@ -308,11 +292,11 @@ void print_password(const char *name)
 	exit(0);
 }
 
-void copy_password(const char *name, const Program *program)
+void copy_password(const char *name)
 {
 	char cmd[PATH_MAX];
 	sprintf(cmd, "%s -p %s | xclip -r -i -selection clipboard",
-		program->name, name);
+		program.name, name);
 	system(cmd);
 	exit(0);
 }
@@ -376,14 +360,21 @@ void rename_password(const char *from, const char *to)
 	printf("'%s' -> '%s'\n", from, to);
 }
 
-void backup_passwords(const char *path, const Program *program)
+void backup_passwords(const char *path)
 {
 	TAR *ptar;
 
+	char *program_name = (char *)program.name;
 	tar_open(&ptar, path, NULL, O_WRONLY | O_CREAT, 0644, TAR_GNU);
-	tar_append_tree(ptar, get_path_to_passwords(), program->name);
+	tar_append_tree(ptar, get_path_to_passwords(), program_name);
 	tar_append_eof(ptar);
 	tar_close(ptar);
+}
+
+void print_version()
+{
+	copt_print_version();
+	exit(0);
 }
 
 #endif // _PASSMAN_H
